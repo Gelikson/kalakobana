@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* A squared school notebook: the game was always played on one. */
+body {
+  color: #f3f0ff;
+  background-color: #0b0e26;
+  background-image:
+    linear-gradient(rgba(243, 240, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 240, 255, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
