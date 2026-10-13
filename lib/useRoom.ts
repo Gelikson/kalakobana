@@ -28,12 +28,12 @@ export function useRoom() {
   const [myId, setMyId] = useState<string>('');
   const [isHost, setIsHost] = useState<boolean>(false);
   const [presence, setPresence] = useState<Player[]>([]);
-  const [game, setGame] = useState<GameState null |>(null);
+  const [game, setGame] = useState<GameState | null>(null);
   const [offset, setOffset] = useState<number>(0);
 
   const metaRef = useRef<{ id: string; name?: string } | null>(null);
   const hostRef = useRef<boolean>(false);
-  const gameRef = useRef<GameState null |>(null);
+  const gameRef = useRef<GameState | null>(null);
   const submissionsRef = useRef<Record<string, Answers>>({});
   const channelRef = useRef<any>(null);
 
@@ -231,42 +231,4 @@ export function useRoom() {
 
     if (hostRef.current) {
       const s = gameRef.current;
-      if (s && s.phase === 'playing' && s.round === round) {
-        submissionsRef.current[pid] = validatedAnswers;
-      }
-    } else {
-      void channelRef.current?.send({
-        type: 'broadcast',
-        event: 'submit',
-        payload: { playerId: pid, round, answers: validatedAnswers },
-      });
-    }
-  }, []);
-
-  const nextRound = useCallback(() => {}, []);
-  const playAgain = useCallback(() => {}, []);
-
-  useEffect(() => {
-    return () => teardown();
-  }, [teardown]);
-
-  return {
-    status,
-    error,
-    setError,
-    code,
-    myId,
-    isHost,
-    presence,
-    game,
-    offset,
-    createRoom,
-    joinRoom,
-    leave: teardown,
-    startGame,
-    nextRound,
-    playAgain,
-    sendStop,
-    submitAnswers,
-  };
-}
+      if (s
