@@ -231,4 +231,42 @@ export function useRoom() {
 
     if (hostRef.current) {
       const s = gameRef.current;
-      if (s
+      if (s && s.phase === 'playing' && s.round === round) {
+        submissionsRef.current[pid] = validatedAnswers;
+      }
+    } else {
+      void channelRef.current?.send({
+        type: 'broadcast',
+        event: 'submit',
+        payload: { playerId: pid, round, answers: validatedAnswers },
+      });
+    }
+  }, []);
+
+  const nextRound = useCallback(() => {}, []);
+  const playAgain = useCallback(() => {}, []);
+
+  useEffect(() => {
+    return () => teardown();
+  }, [teardown]);
+
+  return {
+    status,
+    error,
+    setError,
+    code,
+    myId,
+    isHost,
+    presence,
+    game,
+    offset,
+    createRoom,
+    joinRoom,
+    leave: teardown,
+    startGame,
+    nextRound,
+    playAgain,
+    sendStop,
+    submitAnswers,
+  };
+}
