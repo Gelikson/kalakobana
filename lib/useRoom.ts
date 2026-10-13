@@ -262,19 +262,20 @@ const submitAnswers = useCallback(async (round: number, answers: Answers) => {
 
   const currentLetter = gameRef.current?.letter || '';
 
-  // 1. AI შემოწმება თითოეული კატეგორიისთვის
-  const validatedAnswers: Answers = {};
+  // 1. დავაკოპიროთ არსებული პასუხები (ტიპი რომ არ გატყდეს)
+  const validatedAnswers: Answers = { ...answers };
 
+  // 2. AI შემოწმება თითოეული კატეგორიისთვის
   for (const [category, word] of Object.entries(answers)) {
     const cleanWord = typeof word === 'string' ? word.trim() : '';
 
     if (!cleanWord) {
-      validatedAnswers[category] = '';
+      (validatedAnswers as Record<string, string>)[category] = '';
       continue;
     }
 
     try {
-      const res = await fetch('/api/validate-word', {
+      const res = await fetch('/api/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -287,18 +288,18 @@ const submitAnswers = useCallback(async (round: number, answers: Answers) => {
       const data = await res.json();
 
       if (data.isValid) {
-        validatedAnswers[category] = cleanWord;
+        (validatedAnswers as Record<string, string>)[category] = cleanWord;
       } else {
         console.log(`❌ AI-მ უარყო: "${cleanWord}" (${category}) - ${data.reason}`);
-        validatedAnswers[category] = ''; // უარყოფილი სიტყვა გაუქმდა
+        (validatedAnswers as Record<string, string>)[category] = '';
       }
     } catch (err) {
       console.error('Validation error:', err);
-      validatedAnswers[category] = cleanWord; // შეცდომისას ვატარებთ
+      (validatedAnswers as Record<string, string>)[category] = cleanWord;
     }
   }
 
-  // 2. ვალიდირებული პასუხების გაგზავნა
+  // 3. ვალიდირებული პასუხების გაგზავნა
   if (hostRef.current) {
     const s = gameRef.current;
     if (s && s.phase === 'playing' && s.round === round) {
