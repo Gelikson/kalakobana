@@ -28,12 +28,12 @@ export function useRoom() {
   const [myId, setMyId] = useState<string>('');
   const [isHost, setIsHost] = useState<boolean>(false);
   const [presence, setPresence] = useState<Player[]>([]);
-  const [game, setGame] = useState<GameState | null>(null);
+  const [game, setGame] = useState<GameState null |>(null);
   const [offset, setOffset] = useState<number>(0);
 
   const metaRef = useRef<{ id: string; name?: string } | null>(null);
   const hostRef = useRef<boolean>(false);
-  const gameRef = useRef<GameState | null>(null);
+  const gameRef = useRef<GameState null |>(null);
   const submissionsRef = useRef<Record<string, Answers>>({});
   const channelRef = useRef<any>(null);
 
@@ -155,4 +155,118 @@ export function useRoom() {
   }, []);
 
   const startGame = useCallback(() => {
-    if
+    if (!hostRef.current || !channelRef.current) return;
+
+    const letters = ['ა', 'ბ', 'გ', 'დ', 'ე', 'ვ', 'ზ', 'თ', 'ი', 'კ', 'ლ', 'მ', 'ნ', 'ო', 'პ', 'ჟ', 'რ', 'ს', 'ტ', 'უ', 'ფ', 'ქ', 'ღ', 'ყ', 'შ', 'ჩ', 'ც', 'ძ', 'წ', 'ჭ', 'ხ', 'ჯ', 'ჰ'];
+    const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+
+    const newGame: GameState = {
+      phase: 'playing',
+      round: 1,
+      totalRounds: 5,
+      letter: randomLetter,
+      categories: ['ქალაქი', 'ქვეყანა', 'სახელი', 'ცხოველი', 'მდინარე'],
+      duration: 60,
+      endsAt: Date.now() + 60000,
+      scores: {},
+    };
+
+    setGame(newGame);
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'game_state',
+      payload: newGame,
+    });
+  }, []);
+
+  const sendStop = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'stop',
+        payload: { playerId: metaRef.current?.id },
+      });
+    }
+  }, []);
+
+  const submitAnswers = useCallback(async (round: number, answers: Answers) => {
+    const pid = metaRef.current?.id;
+    if (!pid) return;
+
+    const currentLetter = gameRef.current?.letter || '';
+    const validatedAnswers: Answers = { ...answers };
+
+    const validationPromises = Object.entries(answers).map(async ([category, word]) => {
+      const cleanWord = typeof word === 'string' ? word.trim() : '';
+
+      if (!cleanWord) {
+        (validatedAnswers as Record<string, string>)[category] = '';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            word: cleanWord,
+            category: category,
+            letter: currentLetter,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (data.isValid) {
+          (validatedAnswers as Record<string, string>)[category] = cleanWord;
+        } else {
+          (validatedAnswers as Record<string, string>)[category] = '';
+        }
+      } catch (err) {
+        console.error('Validation error:', err);
+      }
+    });
+
+    await Promise.all(validationPromises);
+
+    if (hostRef.current) {
+      const s = gameRef.current;
+      if (s && s.phase === 'playing' && s.round === round) {
+        submissionsRef.current[pid] = validatedAnswers;
+      }
+    } else {
+      void channelRef.current?.send({
+        type: 'broadcast',
+        event: 'submit',
+        payload: { playerId: pid, round, answers: validatedAnswers },
+      });
+    }
+  }, []);
+
+  const nextRound = useCallback(() => {}, []);
+  const playAgain = useCallback(() => {}, []);
+
+  useEffect(() => {
+    return () => teardown();
+  }, [teardown]);
+
+  return {
+    status,
+    error,
+    setError,
+    code,
+    myId,
+    isHost,
+    presence,
+    game,
+    offset,
+    createRoom,
+    joinRoom,
+    leave: teardown,
+    startGame,
+    nextRound,
+    playAgain,
+    sendStop,
+    submitAnswers,
+  };
+}
