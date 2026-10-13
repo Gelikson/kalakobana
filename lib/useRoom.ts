@@ -8,10 +8,10 @@ export type Answers = Record<string, string>;
 export interface Player {
   id: string;
   name: string;
-  avatar?: string;
-  isHost?: boolean;
-  locked?: boolean;
-  joinedAt?: number;
+  avatar: number;
+  isHost: boolean;
+  locked: boolean;
+  joinedAt: number;
 }
 
 export interface GameState {
@@ -83,10 +83,10 @@ export function useRoom() {
                 players.push({
                   id: p.id,
                   name: p.name,
-                  avatar: p.avatar || '',
-                  isHost: p.isHost || false,
-                  locked: p.locked || false,
-                  joinedAt: p.joinedAt || Date.now(),
+                  avatar: typeof p.avatar === 'number' ? p.avatar : 0,
+                  isHost: Boolean(p.isHost),
+                  locked: Boolean(p.locked),
+                  joinedAt: typeof p.joinedAt === 'number' ? p.joinedAt : Date.now(),
                 });
               }
             });
@@ -106,7 +106,9 @@ export function useRoom() {
             await channel.track({
               id: playerId,
               name: playerName,
+              avatar: 0,
               isHost: true,
+              locked: false,
               joinedAt: Date.now(),
             });
             setStatus('connected');
@@ -156,10 +158,10 @@ export function useRoom() {
                 players.push({
                   id: p.id,
                   name: p.name,
-                  avatar: p.avatar || '',
-                  isHost: p.isHost || false,
-                  locked: p.locked || false,
-                  joinedAt: p.joinedAt || Date.now(),
+                  avatar: typeof p.avatar === 'number' ? p.avatar : 0,
+                  isHost: Boolean(p.isHost),
+                  locked: Boolean(p.locked),
+                  joinedAt: typeof p.joinedAt === 'number' ? p.joinedAt : Date.now(),
                 });
               }
             });
@@ -174,7 +176,9 @@ export function useRoom() {
             await channel.track({
               id: playerId,
               name: playerName,
+              avatar: 0,
               isHost: false,
+              locked: false,
               joinedAt: Date.now(),
             });
             setStatus('connected');
