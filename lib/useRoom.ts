@@ -8,6 +8,10 @@ export type Answers = Record<string, string>;
 export interface Player {
   id: string;
   name: string;
+  avatar?: string;
+  isHost?: boolean;
+  locked?: boolean;
+  joinedAt?: number;
 }
 
 export interface GameState {
@@ -75,7 +79,16 @@ export function useRoom() {
           const players: Player[] = [];
           Object.values(state).forEach((presences: any) => {
             presences.forEach((p: any) => {
-              if (p.id) players.push({ id: p.id, name: p.name });
+              if (p.id) {
+                players.push({
+                  id: p.id,
+                  name: p.name,
+                  avatar: p.avatar || '',
+                  isHost: p.isHost || false,
+                  locked: p.locked || false,
+                  joinedAt: p.joinedAt || Date.now(),
+                });
+              }
             });
           });
           setPresence(players);
@@ -90,7 +103,12 @@ export function useRoom() {
         })
         .subscribe(async (s) => {
           if (s === 'SUBSCRIBED') {
-            await channel.track({ id: playerId, name: playerName });
+            await channel.track({
+              id: playerId,
+              name: playerName,
+              isHost: true,
+              joinedAt: Date.now(),
+            });
             setStatus('connected');
             setGame({
               phase: 'lobby',
@@ -134,7 +152,16 @@ export function useRoom() {
           const players: Player[] = [];
           Object.values(state).forEach((presences: any) => {
             presences.forEach((p: any) => {
-              if (p.id) players.push({ id: p.id, name: p.name });
+              if (p.id) {
+                players.push({
+                  id: p.id,
+                  name: p.name,
+                  avatar: p.avatar || '',
+                  isHost: p.isHost || false,
+                  locked: p.locked || false,
+                  joinedAt: p.joinedAt || Date.now(),
+                });
+              }
             });
           });
           setPresence(players);
@@ -144,7 +171,12 @@ export function useRoom() {
         })
         .subscribe(async (s) => {
           if (s === 'SUBSCRIBED') {
-            await channel.track({ id: playerId, name: playerName });
+            await channel.track({
+              id: playerId,
+              name: playerName,
+              isHost: false,
+              joinedAt: Date.now(),
+            });
             setStatus('connected');
           }
         });
@@ -235,38 +267,4 @@ export function useRoom() {
         submissionsRef.current[pid] = validatedAnswers;
       }
     } else {
-      void channelRef.current?.send({
-        type: 'broadcast',
-        event: 'submit',
-        payload: { playerId: pid, round, answers: validatedAnswers },
-      });
-    }
-  }, []);
-
-  const nextRound = useCallback(() => {}, []);
-  const playAgain = useCallback(() => {}, []);
-
-  useEffect(() => {
-    return () => teardown();
-  }, [teardown]);
-
-  return {
-    status,
-    error,
-    setError,
-    code,
-    myId,
-    isHost,
-    presence,
-    game,
-    offset,
-    createRoom,
-    joinRoom,
-    leave: teardown,
-    startGame,
-    nextRound,
-    playAgain,
-    sendStop,
-    submitAnswers,
-  };
-}
+      void channelRef.current
