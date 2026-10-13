@@ -16,9 +16,9 @@ export interface GameState {
   totalRounds: number;
   letter: string;
   categories: string[];
-  duration: number; // წამებში
-  endsAt: number | null; // Timestamp
-  scores: Record<string, Record<string, number>>; // { playerId: { category: score } }
+  duration: number;
+  endsAt: number | null;
+  scores: Record<string, Record<string, number>>;
 }
 
 export function useRoom() {
@@ -51,14 +51,13 @@ export function useRoom() {
     setCode('');
   }, []);
 
-  // ოთახის შექმნა
   const createRoom = useCallback(async (playerName: string) => {
     setStatus('connecting');
     setError(null);
     try {
       const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
       const playerId = Math.random().toString(36).substring(2, 9);
-      
+
       metaRef.current = { id: playerId, name: playerName };
       setMyId(playerId);
       setCode(roomCode);
@@ -89,8 +88,8 @@ export function useRoom() {
         .on('broadcast', { event: 'game_state' }, ({ payload }) => {
           setGame(payload);
         })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+        .subscribe(async (s) => {
+          if (s === 'SUBSCRIBED') {
             await channel.track({ id: playerId, name: playerName });
             setStatus('connected');
             setGame({
@@ -111,4 +110,49 @@ export function useRoom() {
     }
   }, []);
 
-  // ოთახში
+  const joinRoom = useCallback(async (roomCode: string, playerName: string) => {
+    setStatus('connecting');
+    setError(null);
+    try {
+      const playerId = Math.random().toString(36).substring(2, 9);
+      const cleanCode = roomCode.trim().toUpperCase();
+
+      metaRef.current = { id: playerId, name: playerName };
+      setMyId(playerId);
+      setCode(cleanCode);
+      setIsHost(false);
+
+      const channel = supabase.channel(`room:${cleanCode}`, {
+        config: { presence: { key: playerId } },
+      });
+
+      channelRef.current = channel;
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          const players: Player[] = [];
+          Object.values(state).forEach((presences: any) => {
+            presences.forEach((p: any) => {
+              if (p.id) players.push({ id: p.id, name: p.name });
+            });
+          });
+          setPresence(players);
+        })
+        .on('broadcast', { event: 'game_state' }, ({ payload }) => {
+          setGame(payload);
+        })
+        .subscribe(async (s) => {
+          if (s === 'SUBSCRIBED') {
+            await channel.track({ id: playerId, name: playerName });
+            setStatus('connected');
+          }
+        });
+    } catch (err: any) {
+      setError(err.message || 'ოთახში შესვლა ვერ მოხერხდა');
+      setStatus('idle');
+    }
+  }, []);
+
+  const startGame = useCallback(() => {
+    if
