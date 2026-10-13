@@ -256,16 +256,63 @@ export function useRoom() {
     }
   }, [publish, scheduleFinish]);
 
-  const submitAnswers = useCallback((round: number, answers: Answers) => {
-    const pid = metaRef.current?.id;
-    if (!pid) return;
-    if (hostRef.current) {
-      const s = gameRef.current;
-      if (s && s.phase === 'playing' && s.round === round) { submissionsRef.current[pid] = answers; maybeFinishEarly(); }
-    } else {
-      void channelRef.current?.send({ type: 'broadcast', event: 'submit', payload: { playerId: pid, round, answers } });
+const submitAnswers = useCallback(async (round: number, answers: Answers) => {
+  const pid = metaRef.current?.id;
+  if (!pid) return;
+
+  const currentLetter = gameRef.current?.letter || '';
+
+  // 1. AI შემოწმება თითოეული კატეგორიისთვის
+  const validatedAnswers: Answers = {};
+
+  for (const [category, word] of Object.entries(answers)) {
+    const cleanWord = typeof word === 'string' ? word.trim() : '';
+
+    if (!cleanWord) {
+      validatedAnswers[category] = '';
+      continue;
     }
-  }, [maybeFinishEarly]);
+
+    try {
+      const res = await fetch('/api/validate-word', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          word: cleanWord,
+          category: category,
+          letter: currentLetter,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.isValid) {
+        validatedAnswers[category] = cleanWord;
+      } else {
+        console.log(`❌ AI-მ უარყო: "${cleanWord}" (${category}) - ${data.reason}`);
+        validatedAnswers[category] = ''; // უარყოფილი სიტყვა გაუქმდა
+      }
+    } catch (err) {
+      console.error('Validation error:', err);
+      validatedAnswers[category] = cleanWord; // შეცდომისას ვატარებთ
+    }
+  }
+
+  // 2. ვალიდირებული პასუხების გაგზავნა
+  if (hostRef.current) {
+    const s = gameRef.current;
+    if (s && s.phase === 'playing' && s.round === round) {
+      submissionsRef.current[pid] = validatedAnswers;
+      maybeFinishEarly();
+    }
+  } else {
+    void channelRef.current?.send({
+      type: 'broadcast',
+      event: 'submit',
+      payload: { playerId: pid, round, answers: validatedAnswers },
+    });
+  }
+}, [maybeFinishEarly]);
 
   useEffect(() => () => teardown(), [teardown]);
 
